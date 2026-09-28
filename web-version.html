@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doubt Tracker</title>
+<style>
+[hidden]{display:none!important}
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1b1f2a;--mut:#6b7280;--bd:#e3e6ee;--ac:#4f46e5;--ok:#15803d;--bad:#b45309;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--card:#181b24;--tx:#e8eaf0;--mut:#9aa1b2;--bd:#2a2f3c;--ac:#8b85ff;--ok:#4ade80;--bad:#fbbf24}}
+:root[data-theme="dark"]{--bg:#0f1117;--card:#181b24;--tx:#e8eaf0;--mut:#9aa1b2;--bd:#2a2f3c;--ac:#8b85ff;--ok:#4ade80;--bad:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+select,input,textarea,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+textarea{width:100%;min-height:70px;resize:vertical}input{flex:1;min-width:120px}
+button{cursor:pointer}button.p{background:var(--ac);border-color:var(--ac);color:#fff}
+button:disabled{opacity:.5;cursor:wait}
+.chip{border-radius:999px;padding:4px 12px}.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd);vertical-align:top;font-size:14px}
+th{color:var(--mut);font-weight:600}tr.sel{background:color-mix(in srgb,var(--ac) 10%,transparent)}
+tbody tr{cursor:pointer}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd)}
+.s1{color:var(--ok)}.s0{color:var(--bad)}
+.msg{padding:8px 10px;border-radius:8px;margin:6px 0;white-space:pre-wrap;border:1px solid var(--bd)}
+.msg.u{background:color-mix(in srgb,var(--ac) 10%,transparent)}
+.mut{color:var(--mut);font-size:13px}.bar{display:inline-block;height:8px;background:var(--bad);border-radius:4px;vertical-align:middle;margin-right:6px}
+</style></head><body><main>
+<h1>📚 Doubt Tracker</h1>
+
+<div class="card"><h2>1. Add a doubt</h2>
+ <div class="row" style="margin-bottom:8px">
+  <select id="type"><option>DSA</option><option>C++ Concept</option><option>General</option></select>
+  <input id="topic" placeholder="Topic (e.g. arrays, pointers)">
+  <select id="lvl"><option>Easy</option><option selected>Medium</option><option>Hard</option></select>
+ </div>
+ <textarea id="q" placeholder="Type your doubt here..."></textarea>
+ <div class="row" style="margin-top:8px"><button class="p" id="add">Add &amp; get answer</button><span class="mut" id="addmsg"></span></div>
+</div>
+
+<div class="card"><h2>2. My doubts</h2>
+  <div class="row" style="margin-bottom:10px">
+  <select id="ft"><option value="All">All types</option><option>DSA</option><option>C++ Concept</option><option>General</option></select>
+  <select id="so"><option value="new">Sort: Oldest first</option><option value="pri">Sort: Unsolved &amp; hardest first</option></select>
+  <select id="st"><option value="all">All status</option><option value="0">Unsolved</option><option value="1">Solved</option></select>
+  <input id="kw" placeholder="Search keyword...">
+ </div>
+ <div class="tw"><table><thead><tr><th>#</th><th>Type</th><th>Topic</th><th>Level</th><th>Status</th><th>Doubt</th><th>Answer</th></tr></thead><tbody id="rows"></tbody></table></div>
+ <p class="mut" id="empty" hidden>No doubts match.</p>
+</div>
+
+<div class="card" id="detail" hidden><h2 id="dt"></h2><div id="thread"></div>
+ <div class="row" style="margin-top:8px"><input id="fu" placeholder="Ask a follow-up question...">
+  <button class="p" id="ask">Ask</button></div>
+ <div class="row" style="margin-top:8px"><button id="sv">✅ Solved</button><button id="us">❌ Unsolved</button><button id="ed">✏️ Edit</button><button id="del" style="margin-left:auto">Delete</button></div>
+ <div id="delbox" class="row" hidden style="margin-top:10px;align-items:center"><span>Delete this doubt permanently?</span><button class="p" id="dyes">Yes, delete</button><button id="dno">Cancel</button></div>
+ <div id="editbox" hidden style="margin-top:10px">
+  <div class="row" style="margin-bottom:8px"><input id="et" placeholder="Topic"><select id="el"><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+  <textarea id="eq"></textarea>
+  <div class="row" style="margin-top:8px"><button class="p" id="esave">Save changes</button><button id="ecancel">Cancel</button></div>
+ </div>
+ <div class="mut" id="dmsg"></div>
+</div>
+
+<div class="card"><h2>3. Stats — unsolved by topic (revise first)</h2><div id="stats"></div></div>
+</main>
+<script>
+const KEY='doubts_v1';let D=[],sel=null,ftype='All',sample=null,busy=false;
+try{D=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){D=[]}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TYPES=['All','DSA','C++ Concept','General'];
+claude.use&&claude.use('sample').then(s=>{sample=s;render()}).catch(()=>{});
+
+async function getAnswer(d,followup){
+  if(!sample)return null;
+  const turns=[{role:'user',content:`You are a friendly tutor for a B.Tech student learning coding. Category: ${d.type}. Topic: ${d.topic}. Level: ${d.lvl}. Keep answers short, simple, with a tiny example if useful. Doubt: ${d.q}`}];
+  d.thread.forEach(m=>turns.push({role:m.r==='u'?'user':'assistant',content:m.t}));
+  if(followup)turns.push({role:'user',content:followup});
+  const r=await sample(turns,{cache:false});return r.text;
+}
+$('add').onclick=async()=>{
+  const q=$('q').value.trim();if(!q){$('addmsg').textContent='Write your doubt first.';return}
+  const d={id:(D.reduce((m,x)=>Math.max(m,x.id),0)+1),type:$('type').value,topic:$('topic').value.trim()||'general',lvl:$('lvl').value,q,solved:false,thread:[]};
+  D.push(d);save();$('q').value='';sel=d.id;render();
+  $('add').disabled=true;$('addmsg').textContent=sample?'Getting answer...':'Saved. (AI answer unavailable here — write your own answer below.)';
+  try{const a=await getAnswer(d);if(a){d.thread.push({r:'a',t:a});save();$('addmsg').textContent='Done.'}}
+  catch(e){$('addmsg').textContent='Saved, but the AI answer failed. You can retry with a follow-up.'}
+  $('add').disabled=false;render();
+};
+$('ask').onclick=async()=>{
+  const d=D.find(x=>x.id===sel);const t=$('fu').value.trim();if(!d||!t||busy)return;
+  $('fu').value='';
+  if(!sample){d.thread.push({r:'a',t});save();render();return} // no AI: store as your own note
+  busy=true;$('ask').disabled=true;$('dmsg').textContent='Thinking...';
+  try{const a=await getAnswer(d,t);d.thread.push({r:'u',t});d.thread.push({r:'a',t:a});save()}
+  catch(e){$('dmsg').textContent='Could not get an answer. Try again.'}
+  busy=false;$('ask').disabled=false;render();
+};
+$('ed').onclick=()=>{const d=D.find(x=>x.id===sel);if(!d)return;$('et').value=d.topic;$('el').value=d.lvl;$('eq').value=d.q;$('editbox').hidden=false};
+$('ecancel').onclick=()=>{$('editbox').hidden=true};
+$('esave').onclick=()=>{const d=D.find(x=>x.id===sel);const q=$('eq').value.trim();if(!d||!q)return;d.topic=$('et').value.trim()||'general';d.lvl=$('el').value;d.q=q;save();$('editbox').hidden=true;render()};
+const setS=v=>{const d=D.find(x=>x.id===sel);if(d){d.solved=v;save();render()}};
+$('sv').onclick=()=>setS(true);$('us').onclick=()=>setS(false);
+$('del').onclick=()=>{$('delbox').hidden=false};
+$('dno').onclick=()=>{$('delbox').hidden=true};
+$('dyes').onclick=()=>{D=D.filter(x=>x.id!==sel);sel=null;save();$('delbox').hidden=true;render()};
+['ft','st','so','kw'].forEach(i=>{$(i).oninput=render;$(i).onchange=render});
+
+function render(){
+  ftype=$('ft').value;
+  const kw=$('kw').value.toLowerCase(),st=$('st').value;
+  const L=D.filter(d=>(ftype==='All'||d.type===ftype)&&(st==='all'||String(+d.solved)===st)&&(!kw||(d.q+' '+d.topic).toLowerCase().includes(kw)));
+  if($('so').value==='pri'){const R={Hard:0,Medium:1,Easy:2};L.sort((a,b)=>(a.solved-b.solved)||(R[a.lvl]-R[b.lvl]))}
+  $('rows').innerHTML=L.map(d=>{const a=d.thread.filter(m=>m.r==='a').slice(-1)[0];
+   return `<tr data-id="${d.id}" class="${d.id===sel?'sel':''}"><td>${d.id}</td><td><span class="tag">${esc(d.type)}</span></td><td>${esc(d.topic)}</td><td>${d.lvl}</td><td class="s${+d.solved}">${d.solved?'Solved':'Unsolved'}</td><td>${esc(d.q.slice(0,60))}</td><td class="mut">${a?esc(a.t.slice(0,60))+'…':'—'}</td></tr>`}).join('');
+  $('empty').hidden=L.length>0;
+  $('rows').querySelectorAll('tr').forEach(r=>r.onclick=()=>{sel=+r.dataset.id;$('editbox').hidden=true;$('delbox').hidden=true;render();$('detail').scrollIntoView({behavior:'smooth'})});
+  const d=D.find(x=>x.id===sel);$('detail').hidden=!d;
+  if(d){$('dt').textContent=`#${d.id} · ${d.type} · ${d.topic}`;
+   $('thread').innerHTML=`<div class="msg u"><b>Doubt:</b> ${esc(d.q)}</div>`+d.thread.map(m=>`<div class="msg ${m.r}">${m.r==='u'?'<b>You:</b> ':''}${esc(m.t)}</div>`).join('');
+   $('sv').className=d.solved?'p':'';$('us').className=d.solved?'':'p';
+   $('fu').placeholder=sample?'Ask a follow-up question...':'Write your own answer / note...';
+   $('ask').textContent=sample?'Ask':'Save';$('dmsg').textContent='';}
+  const m={};D.filter(x=>!x.solved).forEach(x=>{const k=x.topic.toLowerCase();m[k]=(m[k]||0)+1});
+  const e=Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  $('stats').innerHTML=`<p class="mut">Total ${D.length} · Solved ${D.filter(x=>x.solved).length} · Unsolved ${D.filter(x=>!x.solved).length}</p>`+(e.length?e.map(([k,v])=>`<div><span class="bar" style="width:${v*24}px"></span>${esc(k)} (${v})</div>`).join(''):'<p class="mut">Nothing unsolved yet.</p>');
+}
+render();
+</script></body></html>
