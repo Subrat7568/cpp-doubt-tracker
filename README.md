@@ -17,3 +17,5 @@ g++ -std=c++17 -o doubt src/main.cpp
 ./doubt          # on Windows: doubt.exe
 ```
 `web-version.html` is a browser version of the same idea (open it in any browser; data is kept in localStorage; the AI answer feature only works on claude.ai).
+
+website link-https://claude.ai/artifact/4N12MgZyBhKrvzDj8NqeFh
